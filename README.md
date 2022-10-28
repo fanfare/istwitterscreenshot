@@ -13,11 +13,6 @@ then make as many requests as needed
 
     thumbnail.onload = async function() {
       const result = await istwitterscreenshot(thumbnail, optionalFullsizeURL)
-      if (result) {
-        console.log("true")
-      }
-      else {
-        console.log("false")
-      }
+      console.log(result) // true
     }
     thumbnail.src = thumbURL
