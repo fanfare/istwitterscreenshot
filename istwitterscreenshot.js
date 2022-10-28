@@ -1,3 +1,7 @@
+// https://github.com/fanfare/istwitterscreenshot
+// by fanfare ~ http://jollo.org/LNT/home/fanfare
+// istwitterscreenshot v0.0.1
+
 const Istwitterscreenshot = function(config) {
 
   const promises = {}
