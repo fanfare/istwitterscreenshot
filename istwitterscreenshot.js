@@ -1,5 +1,5 @@
 // https://github.com/fanfare/istwitterscreenshot
-// istwitterscreenshot v0.0.1
+// istwitterscreenshot v0.0.2
 
 const Istwitterscreenshot = function(config) {
 
@@ -9,10 +9,51 @@ const Istwitterscreenshot = function(config) {
   const outbound = {
     id: null,
     thumb: null,
-    fullsize: null
+    fullsize: null,
+    guess: false
   }
   
-  const worker = new Worker('./ocrad-worker.js')
+  let worker = null
+  
+  function workermessage(e) {
+    let response = e.data
+    if (response && response.type && response.type === "ocradresponse") {
+      let data = response.data
+      let id = data.id
+      let text = data.text
+      let details = data.details
+      ocradresponse(id, text, details)
+    }
+  }
+  
+  function workererror(err) {
+    console.error(err)
+    response(outbound.id, outbound.guess, {error:"ocrad error"})
+    URL.revokeObjectURL(outbound.thumb)
+    URL.revokeObjectURL(outbound.fullsize)
+    outbound.thumb = null
+    ountbound.guess = false
+    outbound.fullsize = null
+    outbound.id = null
+    createworker()
+    setTimeout(()=>{
+      workerqueue.resume()
+    },1000)
+  }
+  
+  function createworker() {
+    if (worker !== null) {
+      worker.removeEventListener("message", workermessage)
+      worker.removeEventListener("error", workererror)
+      worker.terminate()
+      worker = null
+    }
+    worker = new Worker('./ocrad-worker.js')
+    worker.addEventListener("message", workermessage)
+    worker.addEventListener("error", workererror)
+  }
+
+  createworker()
   
   let uid = 0
   let debug = 0
@@ -67,10 +108,7 @@ const Istwitterscreenshot = function(config) {
     if (text) {
       let lowercase = text.toLowerCase()
       let wordmatch = false
-      if (lowercase.indexOf("@") > -1) {
-        wordmatch = "@" 
-      }
-      else if (lowercase.indexOf("tweet") > -1) {
+      if (lowercase.indexOf("tweet") > -1) {
         wordmatch = "tweet"          
       }
       else if (lowercase.indexOf("echobox") > -1) {
@@ -94,6 +132,59 @@ const Istwitterscreenshot = function(config) {
       else if (lowercase.indexOf("twltter") > -1) {
         wordmatch = "twLtter"
       }
+      else if (lowercase.indexOf(" days ago") > -1) {
+        wordmatch = "daysago"
+      }
+      else if (lowercase.indexOf("what's happening") > -1) {
+        wordmatch = "whatshappening"
+      }
+      else if (lowercase.indexOf("joined january") > -1) {
+        wordmatch = "january"
+      }
+      else if (lowercase.indexOf("joined february") > -1) {
+        wordmatch = "february"
+      }
+      else if (lowercase.indexOf("joined march") > -1) {
+        wordmatch = "march"
+      }
+      else if (lowercase.indexOf("joined april") > -1) {
+        wordmatch = "april"
+      }
+      else if (lowercase.indexOf("joined may") > -1) {
+        wordmatch = "may"
+      }
+      else if (lowercase.indexOf("joined june") > -1) {
+        wordmatch = "june"
+      }
+      else if (lowercase.indexOf("joined july") > -1) {
+        wordmatch = "july"
+      }
+      else if (lowercase.indexOf("joined august") > -1) {
+        wordmatch = "august"
+      }
+      else if (lowercase.indexOf("joined september") > -1) {
+        wordmatch = "september"
+      }
+      else if (lowercase.indexOf("joined october") > -1) {
+        wordmatch = "october"
+      }
+      else if (lowercase.indexOf("joined november") > -1) {
+        wordmatch = "november"
+      }
+      else if (lowercase.indexOf("joined december") > -1) {
+        wordmatch = "december"
+      }
+      else if (lowercase.indexOf(" followers") > -1 && lowercase.indexOf(" following") > -1) {
+        wordmatch = "followersfollowing"
+      }
+      
+      if (!wordmatch) {
+        lowercase = lowercase.substring(0,384)
+        if (lowercase.indexOf("@") > -1) {
+          wordmatch = "@" 
+        }
+      }
+      
       details.ocrad.word = wordmatch
       details.ocrad.text = text
       response(id, !!wordmatch, details)
@@ -108,8 +199,10 @@ const Istwitterscreenshot = function(config) {
     },0)
   }
   
-  const evalthumb = function(thumb) {
-    let details = {}
+  const evalthumb = function(thumb, retry) {
+    
+    const routines = {}
+    const details = {}
     details.ocrad = {}
     details.ocrad.fullsize = {}
     details.exit = false
@@ -117,11 +210,13 @@ const Istwitterscreenshot = function(config) {
     details.lastEvaluation = "init"
     details.evaluations = {}
     details.thumb = {}
+    
     let canvas = document.createElement("canvas")
     let ctx = canvas.getContext("2d")
     let width = thumb.width
     let height = thumb.height
     let prefilter = "none"
+    
     if (width > 250) {
       width = 250
       height = Math.floor( (250/thumb.width) * height )
@@ -138,13 +233,22 @@ const Istwitterscreenshot = function(config) {
         prefilter = "contrast(120%)"
       }
     }
+    
     canvas.width = width
     canvas.height = height
     ctx.filter = prefilter
     ctx.drawImage(thumb,0,0,thumb.width,thumb.height,0,0,width,height)
     details.thumb.width = width
     details.thumb.height = height
+    
     let cce
+    
+    function draw(x,y,color) {
+      if (debug > 0 && !retry) {
+        cce.fillStyle = color
+        cce.fillRect(x,y,1,1)
+      }
+    }
     
     function evalcropif() {
       details.lastEvaluation = "crop"
@@ -300,8 +404,6 @@ const Istwitterscreenshot = function(config) {
       
     }
 
-    evalcropif()
-      
     function evaltrimif() {
       details.lastEvaluation = "trim"
       details.evaluations.trim = {}
@@ -427,24 +529,6 @@ const Istwitterscreenshot = function(config) {
       details.thumb.newHeight = height
     }
 
-    evaltrimif()
-      
-    if (debug > 0) {
-      details.thumb.debugCanvas = document.createElement("canvas")
-      details.thumb.debugContext = details.thumb.debugCanvas.getContext("2d")
-      details.thumb.debugCanvas.width = width
-      details.thumb.debugCanvas.height = height
-      cce = details.thumb.debugContext
-      cce.drawImage(canvas,0,0)
-    }
-    
-    function draw(x,y,color) {
-      if (debug > 0) {
-        cce.fillStyle = color
-        cce.fillRect(x,y,1,1)
-      }
-    }
-    
     function evaltextcolor() {
       details.lastEvaluation = "textcolor"
       details.evaluations.textcolor = {}
@@ -453,12 +537,6 @@ const Istwitterscreenshot = function(config) {
         let imagedata = ctx.getImageData(
           x, y, w, h
         )
-        if (debug > 0) {
-          cce.fillStyle = "lime"
-          cce.fillRect(x,y,1,h)
-          cce.fillRect(x,y,w,1)
-          cce.fillRect(x+w-1,y,1,h)
-        }
         let data = imagedata.data
         let whitecount = 0
         let blackcount = 0
@@ -560,17 +638,307 @@ const Istwitterscreenshot = function(config) {
       return halt
     }
 
-    let halt = evaltextcolor()
-
-    if (halt) {
-      details.exit = true
-      return {
-        istwitter: false,
-        primarycolor: null,
-        proceed: false,
-        foundonpass: null,
-        details
+    function evalfooterweight() {
+      details.lastEvaluation = "footer"
+      details.evaluations.footer = {}
+      let footer = details.evaluations.footer
+      let allcount = 0
+      let whitecount = 0
+      let blackcount = 0
+      let darkgreycount = 0
+      let lightgreycount = 0
+      let noncount = 0
+      
+      function subsurpass(x,y,primary) {
+        const color = ctx.getImageData(x,y,1,1).data
+        let r = color[0]
+        let g = color[1]
+        let b = color[2]
+        let colsum = r + g + b
+        let desat = 12
+        let desaturated = 
+          Math.abs(r - g) < desat && 
+          Math.abs(g - b) < desat && 
+          Math.abs(r - b) < desat
+        
+        if (primary === "white") {
+          if (colsum > 680 && desaturated) {
+            return "white"
+          }
+          else {
+            return null
+          }
+        }
+        else {
+          if (colsum < 90 && desaturated) {
+            return "black"
+          }
+          else {
+            return null
+          }          
+        }
       }
+      
+      function surpass(x,y) {
+        const color = ctx.getImageData(x,y,1,1).data
+        let r = color[0]
+        let g = color[1]
+        let b = color[2]
+        let colsum = r + g + b
+        let desat = 8
+        let desaturated = 
+          Math.abs(r - g) < desat && 
+          Math.abs(g - b) < desat && 
+          Math.abs(r - b) < desat
+        if (colsum > 720 && desaturated) {
+          return "white"
+        }
+        else if (colsum > 384 && desaturated) {
+          return "lightgrey"
+        }
+        else if (colsum < 28 && desaturated) {
+          return "black"
+        }
+        else if (colsum <= 384 && desaturated) {
+          return "darkgrey"
+        }
+        else {
+          return null
+        }
+      }
+      for (let y=height-6;y>=height-13;y--) {
+        for (let x=12;x<width-15;x+=1) {
+          let color = surpass(x,y)
+          allcount++
+          switch(color) {
+            case "white": {
+              whitecount++
+              break
+            }
+            case "lightgrey": {
+              lightgreycount++
+              break
+            }
+            case "black": {
+              blackcount++
+              break
+            }
+            case "darkgrey": {
+              darkgreycount++
+              break
+            }
+            case null: {
+              noncount++
+              break
+            }
+          }
+          draw(x,y,"#ffff0040")
+        }
+      }
+
+      let primarycolor
+      let primarycount = 0
+      let secondarycount = 0
+      let tertiarycount = 0
+      
+      if (whitecount > 0 && whitecount > blackcount && whitecount > noncount) {
+        primarycolor = "white"
+        primarycount = whitecount
+        secondarycount = darkgreycount 
+        tertiarycount = blackcount
+      }
+      else if (blackcount > 0 && blackcount > whitecount && blackcount > noncount) {
+        primarycolor = "black"
+        primarycount = blackcount
+        secondarycount = lightgreycount
+        tertiarycount = whitecount
+      }
+      else {
+        primarycolor = null
+        primarycount = null
+      }
+      
+      if (!primarycolor) {
+        return false
+      }
+      
+      let primaryratio = primarycount/allcount
+      let tertiaryratio = tertiarycount/allcount
+      
+      let nonratio = (noncount + secondarycount)/allcount
+      
+      let darkgreyratio = darkgreycount/allcount
+      let lightgreyratio = lightgreycount/allcount
+      
+      footer.primaryRatio = primaryratio
+      footer.tertiaryRatio = tertiaryratio
+      footer.nonRatio = nonratio
+      footer.darkGreyRatio = darkgreyratio
+      footer.lightGreyRatio = lightgreyratio
+      
+      if (primarycolor === "white") {
+        
+      }
+      else if (primarycolor === "black") {
+        // assuming no "like" is clicked (heart/retweet)
+        if ( primaryratio > darkgreyratio
+          && tertiaryratio === 0
+          && primaryratio > 0.5
+          && darkgreyratio < 0.5
+          && primaryratio < .95
+          && darkgreyratio > 0.05
+          && lightgreyratio < 0.004
+          && nonratio < 0.1
+        ) {
+          // good, proceed
+        }
+        else {
+          return false
+        }
+      }
+      
+      // left
+      let clear = true
+      for (let y=height-6;y>=height-13;y--) {
+        clear = true
+        for (let x=12;x<12+6;x+=1) {
+          const color = subsurpass(x,y,primarycolor)
+          draw(x,y,"magenta")
+          if (color !== primarycolor) {
+            draw(x,y,"yellow")
+            clear = false
+            break
+          }
+        }
+        if (!clear) {
+          break
+        }
+      }
+      if (!clear) {
+        return false
+      }
+      
+      // right
+      clear = true
+      for (let y=height-6;y>=height-13;y--) {
+        clear = true
+        for (let x=width-15-6;x<width-15;x+=1) {
+          const color = subsurpass(x,y,primarycolor)
+          draw(x,y,"magenta")
+          if (color !== primarycolor) {
+            draw(x,y,"yellow")
+            clear = false
+            break
+          }          
+        }
+      }
+      if (!clear) {
+        return false
+      }
+      
+      let blanklines = 0
+      let nonblanklines = 0
+      let alllines = 0
+      
+      for (let x=18;x<width-15-6;x+=1) {
+        let blankline = true
+        for (let y=height-6;y>=height-13;y--) {
+          const color = subsurpass(x,y,primarycolor)
+          if (color !== primarycolor) {
+            blankline = false
+            break
+          }
+        }
+        if (blankline) {
+          draw(x,height-3,"yellow")
+          blanklines++
+        }
+        else {
+          draw(x,height-3,"magenta")
+          nonblanklines++
+        }
+        alllines++
+      }
+      
+      const blankratio = blanklines/alllines
+      const nonblankratio = nonblanklines/alllines
+      
+      footer.blankRatio = blankratio
+      footer.nonBlankRatio = nonblankratio
+      
+      if (primarycolor === "black") {
+        if (blankratio > 0.41 && blankratio < 0.83) {
+          // good continue
+        }
+        else {
+          return false
+        }
+      }
+      
+      // top
+      clear = true
+      for (let y=height-10;y>=height-19;y--) {
+        clear = true
+        for (let x=18;x<width-22;x+=1) {
+          draw(x,y,"cyan")
+          const color = subsurpass(x,y,primarycolor)
+          if (color !== primarycolor) {
+            clear = false
+            break
+          }
+        }
+        if (clear) {
+          break
+        }
+      }
+      if (!clear) {
+        return false
+      }
+      
+      // bottom
+      clear = true
+      for (let y=height-1;y>=height-8;y--) {
+        clear = true
+        for (let x=18;x<width-22;x+=1) {
+          draw(x,y,"cyan")
+          const color = subsurpass(x,y,primarycolor)
+          if (color !== primarycolor) {
+            clear = false
+            break
+          }
+        }
+        if (clear) {
+          break
+        }
+      }
+      if (!clear) {
+        return false
+      }
+      
+      // bottom
+      clear = true
+      for (let y=height-7;y>=height-10;y--) {
+        clear = true
+        for (let x=18;x<width-22;x+=1) {
+          draw(x,y,"lime")
+          const color = subsurpass(x,y,primarycolor)
+          if (color !== primarycolor) {
+            clear = false
+            break
+          }
+        }
+        if (!clear) {
+          break
+        }
+      }
+      if (clear) {
+        return false
+      }
+      
+      if (primarycolor === "black") {
+        return true
+      }
+      return false
     }
     
     function evalheaderweight() {
@@ -745,6 +1113,7 @@ const Istwitterscreenshot = function(config) {
         header.deltaPredominant = predomratio
         header.deltaNon = nonratio
         let lastx = 0
+        
         function verticalline() {
           let found = true
           let xcount = 0
@@ -767,6 +1136,7 @@ const Istwitterscreenshot = function(config) {
           }
           return found
         }
+        
         let horizfoundy = null
         function horizontalline() {
           let found = true
@@ -789,12 +1159,42 @@ const Istwitterscreenshot = function(config) {
           }
           return found
         }
+        
+        // function verticalline2() {
+        //   let verticalcanvas = document.createElement('canvas')
+        //   let verticalctx = verticalcanvas.getContext('2d')
+        //   verticalcanvas.width = width
+        //   verticalcanvas.height = height
+        //   verticalctx.filter = "contrast(110%)"
+        //   verticalctx.drawImage(canvas,0,0)
+        //   
+        //   let peak = canvas.height < 25 ? canvas.height : 25
+        //   for (let x=16;x<60;x++) {
+        //     for (let y=3;y<peak;y++) {
+        //       draw(x,y,"cyan")
+        //     }
+        //   }
+        //   
+        //   return true
+        // }
+        
         let vertical = verticalline()
         header.verticalLineRightTest = vertical
+        
         let horizontal = horizontalline()
         header.horizontalLineRightTest = horizontal
+        
         let lefthorizontal = false
         header.horizontalLineLeftTest = lefthorizontal
+        
+        // let vertical2 = verticalline2()
+        // 
+        // if (!vertical2) {
+        //   response.predom = predom
+        //   return response   
+        // }
+        
+        
         let found = true
         if (horizfoundy !== null) {
           let peak = horizfoundy + 56 > height ? height : horizfoundy + 56
@@ -867,19 +1267,6 @@ const Istwitterscreenshot = function(config) {
       }
     }
 
-    let {predom, infound} = evalheaderweight()
-
-    if (infound) {
-      return {
-        istwitter: true,
-        primarycolor: predom,
-        proceed: false,
-        foundonpass: null,
-        details,
-        invert: false
-      }  
-    }
-    
     function evalcheckmark() {
       details.lastEvaluation = "checkmark"
       details.evaluations.checkmark = {}
@@ -967,7 +1354,9 @@ const Istwitterscreenshot = function(config) {
         } 
       }
       checkmark.twitterblueCount = twitterbluecount
+      
       if (twitterbluecount > 4) {
+        
         tbtly = tbtly - 1
         tbbry = tbbry - 1
         tbtlx = tbtlx - fifth
@@ -995,31 +1384,22 @@ const Istwitterscreenshot = function(config) {
         checkmark.offwhiteRatio = owcratio
         checkmark.blankcountRatio = bcratio
         checkmark.nonRatio = bcratio
+        
         if ( tbratio > .52 
           && wcratio > .63 
           && owcratio > .008 
           && bcratio > .001 
           && bcratio < .1 
-          && lar/sml < 2.3
-        ) {
+          && lar/sml < 2.3 ) {
           return true
         }
+        
       }
+      // else if (blankcount) {
+      //   // possibility of bluecheck when scanning full size
+      // }
+      
       return false
-    }
-
-    if (predom === "white") {
-      infound = evalcheckmark()
-      if (infound) {
-        return {
-          istwitter: true,
-          primarycolor: predom,
-          proceed: false,
-          foundonpass: null,
-          details,
-          invert: false
-        }  
-      }
     }
 
     function evaltwitterblue() {
@@ -1048,10 +1428,11 @@ const Istwitterscreenshot = function(config) {
       twitterblue.quarterTotalSum = totalsum
       twitterblue.quarterTwitterblueSum = istwitterblue
       twitterblue.quarterTwitterblueRatio = twitterblueratio
-      if (twitterblueratio >= .61) {
-        return true
-      }
+      // if (twitterblueratio >= .61) {
+      //   return true
+      // }
       let verytwitterblue = 0
+      let verytwitterblue2 = 0
       totalsum = 0
       imagedata = ctx.getImageData(
         0,0,width,height
@@ -1065,30 +1446,26 @@ const Istwitterscreenshot = function(config) {
         if ( r === 22 && g === 32 && b === 41 ) {
           verytwitterblue++
         }
+        else if (r === 27 && g === 41 && b === 54) {
+          verytwitterblue2++
+        }
       }
       let verytwitterblueratio = verytwitterblue/totalsum
+      let verytwitterblue2ratio = verytwitterblue2/totalsum
       twitterblue.fullTotalSum = totalsum
       twitterblue.fullVeryTwitterblueSum = verytwitterblue
+      twitterblue.fullVeryTwitterblue2Sum = verytwitterblue2
       twitterblue.fullVeryTwitterblueRatio = verytwitterblueratio
-      if (verytwitterblueratio > .11) {
+      twitterblue.fullVeryTwitterblue2Ratio = verytwitterblue2ratio
+      if (verytwitterblueratio > .094) {
+        return true
+      }
+      else if (verytwitterblue2ratio > .094) {
         return true
       }
       return false
     }
     
-    if (predom === "blue") {
-      infound = evaltwitterblue()
-      if (infound) {
-        return {
-          istwitter: true,
-          primarycolor: predom,
-          proceed: false,
-          foundonpass: null,
-          details
-        }
-      }
-    }
-
     function evalinvert() {
       details.lastEvaluation = "invert"
       details.evaluations.invert = {}
@@ -1132,9 +1509,7 @@ const Istwitterscreenshot = function(config) {
       return inversion
     }
 
-    const invert = evalinvert()
-
-    const evalpfp = function(gcanvas, contrast) {
+    function evalpfp(gcanvas, contrast) {
       details.lastEvaluation = "pfp"
       details.evaluations.pfp = {}
       let dpfp = details.evaluations.pfp
@@ -1598,26 +1973,7 @@ const Istwitterscreenshot = function(config) {
       dpfp.success = `success at ${contrast} contrast`
       return true 
     }
-    let pfp = false
-    if (predom !== null) {
-      for (let q=0;q<3;q++) {
-        let contrast = 100 + (q*25)
-        let test = evalpfp(canvas, contrast)
-        if (test) {
-          pfp = true
-          break
-        }
-      }
-    }
-    if (pfp) {
-      return {
-        istwitter: true,
-        primarycolor: null,
-        proceed: false,
-        foundonpass: 0,
-        details
-      }      
-    }
+
     function evalskiphorizontal() {
       details.lastEvaluation = "skiphorizontal"
       let clonecanvas = document.createElement("canvas")
@@ -1687,19 +2043,6 @@ const Istwitterscreenshot = function(config) {
       details.evaluations.skiphorizontal.foundY = ypass
       details.evaluations.skiphorizontal.foundColor = found
       return atleastonepass
-    }
-    
-    let horizontal = evalskiphorizontal()
-    
-    if (!horizontal) {
-      details.exit = true
-      return {
-        istwitter: false,
-        primarycolor: null,
-        proceed: false,
-        foundonpass: null,
-        details
-      }
     }
     
     function evaledges() {
@@ -1951,29 +2294,203 @@ const Istwitterscreenshot = function(config) {
       }
       return {proceed, foundonpass, primarycolor}
     }
-
-    let {proceed, foundonpass, primarycolor} = evaledges()
-    details.lastEvaluation = "edges"
-    details.evaluations.edges = {}
-    let edges = details.evaluations.edges
-    edges.foundOnPass = foundonpass
-    edges.proceed = proceed
-    edges.primaryColor = primarycolor
     
-    return {
-      istwitter: false,
-      primarycolor,
-      proceed,
-      foundonpass,
-      details,
-      invert
+    routines.first = () => {
+      
+      evalcropif()
+      evaltrimif()
+        
+      details.thumb.oldWidth = details.thumb.width
+      details.thumb.oldHeight = details.thumb.height 
+      
+      if (debug > 0) {
+        details.thumb.debugCanvas = document.createElement("canvas")
+        details.thumb.debugContext = details.thumb.debugCanvas.getContext("2d")
+        details.thumb.debugCanvas.width = width
+        details.thumb.debugCanvas.height = height
+        cce = details.thumb.debugContext
+        cce.drawImage(canvas,0,0)
+      }
+      
+      let wrongcolortest = evaltextcolor()
+      
+      if (wrongcolortest) {
+        details.exit = true
+        return {
+          istwitter: false,
+          primarycolor: null,
+          proceed: false,
+          foundonpass: null,
+          details
+        }
+      }
+      
+      let footertest = evalfooterweight()
+      
+      if (footertest) {
+        details.exit = true
+        return {
+          istwitter: true,
+          primarycolor: null,
+          proceed: false,
+          foundonpass: null,
+          details
+        }
+      }
+      
+      
+      let { predom, infound } = evalheaderweight()
+      
+      if (infound) {
+        return {
+          istwitter: true,
+          primarycolor: predom,
+          proceed: false,
+          foundonpass: null,
+          details,
+          invert: false
+        }  
+      }
+      
+      if (predom === "white") {
+        infound = evalcheckmark()
+        if (infound) {
+          return {
+            istwitter: true,
+            primarycolor: predom,
+            proceed: false,
+            foundonpass: null,
+            details,
+            invert: false
+          }  
+        }
+      }
+      
+      if (predom === "blue" 
+        || ( details.evaluations.textcolor 
+          && details.evaluations.textcolor.footer 
+          && details.evaluations.textcolor.footer.primaryColor === "blue" )) {
+        infound = evaltwitterblue()
+        if (infound) {
+          return {
+            istwitter: true,
+            primarycolor: predom,
+            proceed: false,
+            foundonpass: null,
+            details
+          }
+        }
+      }
+      
+      let pfp = false
+      
+      if (predom !== null) {
+        for (let q=0;q<3;q++) {
+          let contrast = 100 + (q*25)
+          let test = evalpfp(canvas, contrast)
+          if (test) {
+            pfp = true
+            break
+          }
+        }
+      }
+      if (pfp) {
+        return {
+          istwitter: true,
+          primarycolor: null,
+          proceed: false,
+          foundonpass: 0,
+          details
+        }      
+      }
+      
+      let horizontal = evalskiphorizontal()
+      if (!horizontal) {
+        details.exit = true
+        return {
+          istwitter: false,
+          primarycolor: null,
+          proceed: false,
+          foundonpass: null,
+          details
+        }
+      }
+      
+      let invert = evalinvert()
+      
+      let { proceed, foundonpass, primarycolor } = evaledges()
+      
+      details.lastEvaluation = "edges"
+      details.evaluations.edges = {}
+      let edges = details.evaluations.edges
+      edges.foundOnPass = foundonpass
+      edges.proceed = proceed
+      edges.primaryColor = primarycolor
+      
+      return {
+        istwitter: false,
+        primarycolor,
+        proceed,
+        foundonpass,
+        details,
+        invert
+      }
+      
     }
+    
+    routines.second = () => {
+
+      evalcropif()
+      evaltrimif()
+
+      let checkmarktest = evalcheckmark()
+      if (checkmarktest) {
+        return {
+          istwitter: true
+        }  
+      }
+      
+      let pfptest = evalpfp(canvas, 100)
+      if (pfptest) {
+        return {
+          istwitter: true
+        } 
+      }
+      
+      return {
+        istwitter: false
+      } 
+      
+    }
+    
+    let method = retry ? "second" : "first"
+    return routines[method]()
     
   }
 
   const evalfullsize = function(args) {
-    let {id, fullsizeurl, details, invert} = args
+    
+    let {id, fullsizeurl, details, invert, realfullsize} = args
+    
     const imgloaded = function(image) {
+      
+      details.retry = false
+      let primarycolor = details.evaluations.textcolor.header.primaryColor
+      
+      // test fullres as thumb for bluecheck, pfp
+      if (primarycolor === "white") {
+        details.retry = true
+        const retry = evalthumb(image, true)
+        let istwitter = retry.istwitter
+        if (istwitter) {
+          response(id, true, details)
+          setTimeout(()=>{
+            workerqueue.resume()
+          },0)
+          return null
+        }
+      }
+      
       let width = image.width
       let height = image.height
       let destwidth = width
@@ -1983,7 +2500,7 @@ const Istwitterscreenshot = function(config) {
         destheight = Math.floor((1000/width) * height)
         destwidth = 1000      
       }
-      if (destheight > 2400) {
+      if (destheight > 2800) {
         details.abort = "image too tall"
         response(id, false, details)
         setTimeout(()=>{
@@ -1998,16 +2515,70 @@ const Istwitterscreenshot = function(config) {
         0, 0, width, height, 
         0, 0, destwidth, destheight
       )
+      
+      // trim this canvas with the same percentage as the thumbnail
+      let ct = details.evaluations.crop && details.evaluations.crop.offsetTop   ? details.evaluations.crop.offsetTop   : 0
+      let cl = details.evaluations.crop && details.evaluations.crop.offsetLeft  ? details.evaluations.crop.offsetLeft  : 0
+      let cr = details.evaluations.crop && details.evaluations.crop.offsetRight ? details.evaluations.crop.offsetRight : 0
+      let tt = details.evaluations.trim.top    > 4 ? details.evaluations.trim.top     - 4 : 0
+      let tl = details.evaluations.trim.left   > 4 ? details.evaluations.trim.left    - 4 : 0
+      let tb = details.evaluations.trim.bottom > 4 ? details.evaluations.trim.bottom  - 4 : 0
+      let tr = details.evaluations.trim.right  > 4 ? details.evaluations.trim.right   - 4 : 0
+      
+      ctr = Math.floor((ct / details.thumb.oldHeight) * destheight )
+      clr = Math.floor((cl / details.thumb.oldWidth ) * destwidth  )
+      crr = Math.floor((cr / details.thumb.oldWidth ) * destwidth  )
+      ttr = Math.floor((tt / details.thumb.oldHeight) * destheight )
+      tlr = Math.floor((tl / details.thumb.oldWidth ) * destwidth  )
+      tbr = Math.floor((tb / details.thumb.oldHeight) * destheight )
+      trr = Math.floor((tr / details.thumb.oldWidth ) * destwidth  )
+      
+      let xttl = clr + tlr
+      let xttb = tbr
+      let xttr = crr + trr
+      let xttt = ctr + ttr
+      
+      let xnw = destwidth - xttl - xttr
+      let xnh = destheight - xttt - xttb
+      
+      let clonecanvas = document.createElement('canvas')
+      let clonectx = clonecanvas.getContext('2d')
+      clonecanvas.width = xnw
+      clonecanvas.height = xnh
+      clonectx.drawImage(canvas,(xttl * -1), (xttt * -1))
+      
+      canvas = null
+      lctx = null
+      destwidth = null
+      destheight = null
+      
+      canvas = clonecanvas
+      lctx = clonectx
+      destwidth = xnw
+      destheight = xnh
+      
+      lctx.fillStyle = invert ? "#000" : "#fff"
+      
+      lctx.fillRect(0,0,5,destheight)
+      lctx.fillRect(0,0,destwidth,5)
+      
       const fxcanvas = document.createElement("canvas")
       const fxctx = fxcanvas.getContext("2d")
       let fxwidth
       let fxheight
+      
+      let fxhpma = (destheight * 1/3) > 500 ? 500 : (destheight * 1/3)
+      let fxhpmb = (destheight * 1/5) > 300 ? 300 : (destheight * 1/5)
+      
       fxwidth = Math.floor((destwidth * 2/3) * 2)
-      fxheight = Math.floor(((destheight * 1/3) * 2) + ((destheight * 1/5) * 4))
+      fxheight = Math.floor((fxhpma * 2) + (fxhpmb * 4))
+      
       fxctx.fillStyle="#fff"
       fxctx.fillRect(0,0,fxwidth,fxheight)
       fxcanvas.width = fxwidth
       fxcanvas.height = fxheight
+      
+      
       fxctx.save()
       if (invert) {
         fxctx.filter = `saturate(0) invert(1) brightness(${52+12}%) contrast(150%) contrast(150%) contrast(150%)`
@@ -2015,9 +2586,9 @@ const Istwitterscreenshot = function(config) {
         fxctx.filter = `saturate(0) invert(1) brightness(${52+16}%) contrast(150%) contrast(150%) contrast(150%)`
         fxctx.drawImage(canvas, Math.floor(destwidth * 2/3),  0)
         fxctx.filter = `saturate(0) invert(1) brightness(${52+19}%) contrast(150%) contrast(150%) contrast(150%)`
-        fxctx.drawImage(canvas, 0, Math.floor(destheight * 1/3))
+        fxctx.drawImage(canvas, 0, Math.floor(fxhpma))
         fxctx.filter = `saturate(0) invert(1) brightness(${52+24}%) contrast(150%) contrast(150%) contrast(150%)`
-        fxctx.drawImage(canvas, Math.floor(destwidth * 2/3), Math.floor(destheight * 1/3))
+        fxctx.drawImage(canvas, Math.floor(destwidth * 2/3), Math.floor(fxhpma))
       }
       else {
         fxctx.filter = `saturate(0) brightness(${52+12}%) contrast(150%) contrast(150%)`
@@ -2025,71 +2596,95 @@ const Istwitterscreenshot = function(config) {
         fxctx.filter = `saturate(0) brightness(${52+15}%) contrast(150%) contrast(150%)`
         fxctx.drawImage(canvas, Math.floor(destwidth * 2/3),  0)
         fxctx.filter = `saturate(0) brightness(${52+18}%) contrast(150%) contrast(150%)`
-        fxctx.drawImage(canvas, 0, Math.floor(destheight * 1/3))
+        fxctx.drawImage(canvas, 0, Math.floor(fxhpma))
         fxctx.filter = `saturate(0) brightness(${52+24}%) contrast(150%) contrast(150%)`
-        fxctx.drawImage(canvas, Math.floor(destwidth * 2/3), Math.floor(destheight * 1/3))
+        fxctx.drawImage(canvas, Math.floor(destwidth * 2/3), Math.floor(fxhpma))
       }
       fxctx.restore()
       fxctx.fillStyle="#fff"
-      fxctx.fillRect(0,Math.floor((destheight * 1/3) * 2),fxwidth,fxheight)
+      fxctx.fillRect(0,Math.floor((fxhpma) * 2),fxwidth,fxheight)
       fxctx.save()
+      
+      
       if (invert) {
         fxctx.filter = `saturate(0) invert(1) brightness(${52+11}%) contrast(150%) contrast(150%) contrast(150%)`
         fxctx.drawImage(
           canvas, 
-          0, Math.floor((destheight * 1/5) * 4), destwidth, destheight, 
-          0, (Math.floor(destheight * 1/3) * 2) , destwidth, destheight
+          0, destheight - fxhpmb, destwidth, destheight, 
+          0, (Math.floor(fxhpma) * 2) , destwidth, destheight
         )
         fxctx.filter = `saturate(0) invert(1) brightness(${52+16}%) contrast(150%) contrast(150%) contrast(150%)`
         fxctx.drawImage(
           canvas, 
-          0, Math.floor((destheight * 1/5) * 4), destwidth, destheight, 
-          0, (Math.floor(destheight * 1/3) * 2)  + (Math.floor(destheight * 1/5) * 1), destwidth, destheight
+          0, destheight - fxhpmb, destwidth, destheight, 
+          0, (Math.floor(fxhpma) * 2) + (Math.floor(fxhpmb) * 1), destwidth, destheight
         )
         fxctx.filter = `saturate(0) invert(1) brightness(${52+19}%) contrast(150%) contrast(150%) contrast(150%)`
         fxctx.drawImage(
           canvas, 
-          0, Math.floor((destheight * 1/5) * 4), destwidth, destheight, 
-          0, (Math.floor(destheight * 1/3) * 2)  + (Math.floor(destheight * 1/5) * 2), destwidth, destheight
+          0, destheight - fxhpmb, destwidth, destheight, 
+          0, (Math.floor(fxhpma) * 2) + (Math.floor(fxhpmb) * 2), destwidth, destheight
         )
         fxctx.filter = `saturate(0) invert(1) brightness(${52+24}%) contrast(150%) contrast(150%) contrast(150%)`
         fxctx.drawImage(
           canvas, 
-          0, Math.floor((destheight * 1/5) * 4), destwidth, destheight, 
-          0, (Math.floor(destheight * 1/3) * 2)  + (Math.floor(destheight * 1/5) * 3), destwidth, destheight
+          0, destheight - fxhpmb, destwidth, destheight, 
+          0, (Math.floor(fxhpma) * 2) + (Math.floor(fxhpmb) * 3), destwidth, destheight
         )
       }
+      
+      
       else {
         fxctx.filter = `saturate(0) brightness(${52+12}%) contrast(150%) contrast(150%)`
         fxctx.drawImage(
           canvas, 
-          0, Math.floor((destheight * 1/5) * 4), destwidth, destheight, 
-          0, (Math.floor(destheight * 1/3) * 2) , destwidth, destheight
+          0, destheight - fxhpmb, destwidth, destheight, 
+          0, (Math.floor(fxhpma) * 2) , destwidth, destheight
         )
         fxctx.filter = `saturate(0) brightness(${52+15}%) contrast(150%) contrast(150%)`
         fxctx.drawImage(
           canvas, 
-          0, Math.floor((destheight * 1/5) * 4), destwidth, destheight, 
-          0, (Math.floor(destheight * 1/3) * 2)  + (Math.floor(destheight * 1/5) * 1), destwidth, destheight
+          0, destheight - fxhpmb, destwidth, destheight, 
+          0, (Math.floor(fxhpma) * 2)  + (Math.floor(fxhpmb) * 1), destwidth, destheight
         )
         fxctx.filter = `saturate(0) brightness(${52+18}%) contrast(150%) contrast(150%)`
         fxctx.drawImage(
           canvas, 
-          0, Math.floor((destheight * 1/5) * 4), destwidth, destheight, 
-          0, (Math.floor(destheight * 1/3) * 2)  + (Math.floor(destheight * 1/5) * 2), destwidth, destheight
+          0, destheight - fxhpmb, destwidth, destheight, 
+          0, (Math.floor(fxhpma) * 2)  + (Math.floor(fxhpmb) * 2), destwidth, destheight
         )
         fxctx.filter = `saturate(0) brightness(${52+24}%) contrast(150%) contrast(150%)`
         fxctx.drawImage(
           canvas, 
-          0, Math.floor((destheight * 1/5) * 4), destwidth, destheight, 
-          0, (Math.floor(destheight * 1/3) * 2)  + (Math.floor(destheight * 1/5) * 3), destwidth, destheight
+          0, destheight - fxhpmb, destwidth, destheight, 
+          0, (Math.floor(fxhpma) * 2)  + (Math.floor(fxhpmb) * 3), destwidth, destheight
         )
       }
       fxctx.restore()
+      
       const ldata = fxctx.getImageData(0,0,fxwidth,fxheight).data
+      
+      if (ldata.length > 16700000) {
+        details.error = `fullsize array too large: ${ldata.length}`
+        let guess = false
+        if (details.guess === true) {
+          guess = true
+        }
+        response(id, guess, details)
+        setTimeout(()=>{
+          workerqueue.resume()
+        },0)
+        return null
+      }
+      
       const fullsizeblob = new Blob([ldata], {type: "octet/stream"})
       const fullsizebloburl = URL.createObjectURL(fullsizeblob)
       outbound.fullsize = fullsizebloburl
+      let guess = false
+      if (details.guess === true) {
+        guess = true
+      }
+      outbound.guess = guess
       if (debug > 0) {
         outbound.thumb = details.thumb.url
       }
@@ -2109,18 +2704,27 @@ const Istwitterscreenshot = function(config) {
       imgloaded(fullsizeurl)
       return null
     }
+    
     let img = new Image()
+    
     img.onload = () => {
       imgloaded(img)
     }
+    
     img.onerror = () => {
       details.error = "fullsize load error"
-      response(id, false, details)
+      let guess = false
+      if (details.guess === true) {
+        guess = true
+      }
+      response(id, guess, details)
       setTimeout(()=>{
         workerqueue.resume()
       },0)
     }
+    
     img.src = fullsizeurl
+    
   }
   
   const guessthumb = function(details) {
@@ -2174,7 +2778,9 @@ const Istwitterscreenshot = function(config) {
   const workerqueue = new Queue(evalfullsize)
 
   const init = function(id, thumb, fullsizeurl) {
-    const {istwitter, proceed, details, invert} = evalthumb(thumb)
+    
+    const {istwitter, proceed, details, invert} = evalthumb(thumb, false)
+    
     if (debug > 0) {
       buildthumbblob(details)
     }
@@ -2184,43 +2790,32 @@ const Istwitterscreenshot = function(config) {
     if (!proceed) {
       return response(id, false, details)
     }
+    const guess = guessthumb(details)
+    
     if (!fullsizeurl && thumb.width < 500) {
-      const guess = guessthumb(details)
       return response(id, guess, details)
     }
     else if (!fullsizeurl && thumb.width >= 500) {
-      workerqueue.push({id, fullsizeurl: thumb, details, invert})
+      workerqueue.push({
+        id, 
+        realfullsize: false, 
+        fullsizeurl: thumb, 
+        details, 
+        invert
+      })
     }
     else {
-      workerqueue.push({id, fullsizeurl, details, invert})
+      workerqueue.push({
+        id, 
+        realfullsize: true, 
+        fullsizeurl, 
+        details, 
+        invert
+      })
     }
     return null
   }
-
-  worker.onmessage = function(e) {
-    let response = e.data
-    if (response && response.type && response.type === "ocradresponse") {
-      let data = response.data
-      let id = data.id
-      let text = data.text
-      let details = data.details
-      ocradresponse(id, text, details)
-    }
-  }
-  
-  worker.onerror = function(err) {
-    console.error(err)
-    response(outbound.id, false, {error:"ocrad error"})
-    URL.revokeObjectURL(outbound.thumb)
-    URL.revokeObjectURL(outbound.fullsize)
-    outbound.thumb = null
-    outbound.fullsize = null
-    outbound.id = null
-    setTimeout(()=>{
-      workerqueue.resume()
-    },0)    
-  }
-
+    
   this.request = function(thumb, fullsizeurl) {
     const id = ++uid
     times[id] = performance.now()
