@@ -1395,9 +1395,6 @@ const Istwitterscreenshot = function(config) {
         }
         
       }
-      // else if (blankcount) {
-      //   // possibility of bluecheck when scanning full size
-      // }
       
       return false
     }
@@ -1428,9 +1425,6 @@ const Istwitterscreenshot = function(config) {
       twitterblue.quarterTotalSum = totalsum
       twitterblue.quarterTwitterblueSum = istwitterblue
       twitterblue.quarterTwitterblueRatio = twitterblueratio
-      // if (twitterblueratio >= .61) {
-      //   return true
-      // }
       let verytwitterblue = 0
       let verytwitterblue2 = 0
       totalsum = 0
