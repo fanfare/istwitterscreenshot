@@ -177,14 +177,17 @@ const Istwitterscreenshot = function(config) {
       else if (lowercase.indexOf(" followers") > -1 && lowercase.indexOf(" following") > -1) {
         wordmatch = "followersfollowing"
       }
-      
       if (!wordmatch) {
         lowercase = lowercase.substring(0,384)
-        if (lowercase.indexOf("@") > -1) {
+        if ( lowercase.indexOf("@") > -1 
+          && details
+          && details.evaluations
+          && details.evaluations.textcolor
+          && details.evaluations.textcolor.header
+          && details.evaluations.textcolor.header.primaryColor !== null) {
           wordmatch = "@" 
         }
       }
-      
       details.ocrad.word = wordmatch
       details.ocrad.text = text
       response(id, !!wordmatch, details)
