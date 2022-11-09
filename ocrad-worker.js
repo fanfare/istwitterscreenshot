@@ -8083,6 +8083,8 @@ return OCRAD;
 
 importScripts("common-worker.js")
 
+// istwitterscreenshot
+
 onmessage = function(e) {
   let data = e.data
   let id = data.id
@@ -8106,7 +8108,7 @@ onmessage = function(e) {
       postMessage({
         type: "ocradresponse",
         data: {
-          id, details, text
+          id, text
         }
       })
     })
