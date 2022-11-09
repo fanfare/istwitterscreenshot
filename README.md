@@ -53,11 +53,11 @@ additionally, if you only have one version of an image (either *only* the thumbn
 
 finally, you can also cancel requests after they have been made via `istwitterscreenshot.request` in case you need to prevent the full size URL from eventually being downloaded and evaluated:
 
-before making a request via `istwitterscreenshot.request`, obtain a cancel token -- this token can be used on one (or multiple) requests to cancel *all* requests made using the same token.
+before making a request via `istwitterscreenshot.request`, obtain a cancel token -- this token can be used on one (or multiple) requests to cancel *all* requests made using the same token:
 
     const cancelToken = istwitterscreenshot.obtainCancelToken()
     
-then supply that cancel token when making a request (note: if there is no `optionalFullsizeURL`, set `optionalFullsizeURL` to be `null`)
+then supply that cancel token when making a request:
 
     const response = await istwitterscreenshot.request(image, optionalFullsizeURL, cancelToken)
     
