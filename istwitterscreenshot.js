@@ -1,5 +1,5 @@
 // https://github.com/fanfare/istwitterscreenshot
-// istwitterscreenshot v0.0.5
+// istwitterscreenshot v0.0.6
 
 const Istwitterscreenshot = function(config) {
 
@@ -487,6 +487,8 @@ const Istwitterscreenshot = function(config) {
       return null
     }
     let image = new Image()
+    
+    image.crossOrigin = "anonymous"
     
     image.onload = () => {
       imageloaded(image)
