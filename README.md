@@ -35,7 +35,7 @@ if it is uncertain as to whether or not the thumbnail is twitter screenshot, it 
     
 ## notes
 
-it is important to note that the image(s) must be from the same domain as the page you are on -- to circumvent this, the library can be run from within a browser webextension's background script, which is not limited by CORS restrictions (at least in chrome). in firefox, the add on's `"permissions"` key in the `manifest.json` file likely needs to include `"<all_urls>"`, and within the background script, use an "anonymous" `crossOrigin` property on the `image` variable, e.g.
+it is important to note that the image(s) must be from the same domain as the page you are on -- to circumvent this, the library can be run from within a browser extension's background script, which is not limited by CORS restrictions (at least in chrome). in firefox, the extension's `"permissions"` key in the `manifest.json` file most likely needs to include `"<all_urls>"`, and within the background script, use an "anonymous" `crossOrigin` property on the `image` variable, e.g.
 
     const image = new Image
     image.crossOrigin = "anonymous"
