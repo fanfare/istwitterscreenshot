@@ -18,7 +18,7 @@ then make as many requests as needed
     const optionalFullsizeURL = "http://localhost/fullsize.jpg"
 
     const image = new Image
-    
+
     image.onload = async function() {
       const response = await istwitterscreenshot.request(image, optionalFullsizeURL)
       console.log(response) // true
@@ -35,18 +35,17 @@ if it is uncertain as to whether or not the thumbnail is twitter screenshot, it 
     
 ## notes
 
-it is important to note that the image(s) must be from the same domain as the page you are on -- to circumvent this, the library can be run from within a browser extension's background script, which is not limited by CORS restrictions (at least in chrome). in firefox, the extension's `"permissions"` key in the `manifest.json` file most likely needs to include `"<all_urls>"`, and within the background script, use an `"anonymous"` `crossOrigin` property on the `image` variable, e.g.
+it is important to note that the image(s) must be from the same domain as the page you are on -- to circumvent this, the library can be run from within a browser extension's background script, which is not limited by CORS restrictions, assuming the `"permissions"` key in the `manifest.json` includes the appropriate domains and/or `"<all_urls>"`. you may also need to set the `image` variable to have a `crossOrigin` property of `"anonymous"`, e.g.:
 
     const image = new Image
     image.crossOrigin = "anonymous"
     
-
 additionally, if you only have one version of an image (either *only* the thumbnail, or *only* the fullsize version), set whatever image you have to be the first argument, and set the second argument to be `null`: 
 
     const URL = "http://localhost/someimage.jpg"
     
     const image = new Image
-    
+
     image.onload = async function() {
       const response = await istwitterscreenshot.request(image, null)
       console.log(response) // true
