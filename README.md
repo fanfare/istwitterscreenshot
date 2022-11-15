@@ -25,6 +25,18 @@ then make as many requests as needed (assuming you have a fullsize image and a t
     }
     image.src = thumbnailURL
     
+if you only have one version of an image (either *only* the thumbnail, or *only* the fullsize version), set whatever image you have to be the first argument, and set the second argument to be `null`: 
+
+    const URL = "http://localhost/someimage.jpg"
+    
+    const image = new Image
+
+    image.onload = async function() {
+      const response = await istwitterscreenshot.request(image, null)
+      console.log(response) // true
+    }
+    image.src = URL
+    
 ## how it works
 
 the library will first evaluate the thumbnail provided and make a guess as to whether or not it is a twitter screenshot based *soley* on the thumbnail.
@@ -39,18 +51,6 @@ it is important to note that the image(s) must be from the same domain as the pa
 
     const image = new Image
     image.crossOrigin = "anonymous"
-    
-additionally, if you only have one version of an image (either *only* the thumbnail, or *only* the fullsize version), set whatever image you have to be the first argument, and set the second argument to be `null`: 
-
-    const URL = "http://localhost/someimage.jpg"
-    
-    const image = new Image
-
-    image.onload = async function() {
-      const response = await istwitterscreenshot.request(image, null)
-      console.log(response) // true
-    }
-    image.src = URL
 
 ## misc
 
