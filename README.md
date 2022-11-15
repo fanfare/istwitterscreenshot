@@ -25,7 +25,7 @@ then make as many requests as needed (assuming you have a fullsize image and a t
     }
     image.src = thumbnailURL
     
-if you only have one version of an image (either *only* the thumbnail, or *only* the fullsize version), set whatever image you have to be the first argument, and set the second argument to be `null`: 
+if you only have *one* version of an image (either *only* the thumbnail, or *only* the fullsize version), set whatever image you have to be the first argument, and set the second argument to be `null`: 
 
     const URL = "http://localhost/someimage.jpg"
     
