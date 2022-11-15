@@ -15,12 +15,12 @@ create an instance of istwitterscreenshot (one time):
 then make as many requests as needed (assuming you have a fullsize image and a thumbnail image):
 
     const thumbnailURL = "http://localhost/thumbnail.jpg"
-    const optionalFullsizeURL = "http://localhost/fullsize.jpg"
+    const fullsizeURL = "http://localhost/fullsize.jpg"
 
     const image = new Image
 
     image.onload = async function() {
-      const response = await istwitterscreenshot.request(image, optionalFullsizeURL)
+      const response = await istwitterscreenshot.request(image, fullsizeURL)
       console.log(response) // true
     }
     image.src = thumbnailURL
