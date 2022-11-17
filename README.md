@@ -1,10 +1,8 @@
 # istwitterscreenshot
 
-![twitter screencap vs regular image](https://i.jollo.org/MTmvFT1h.png)
-
 istwitterscreenshot is a library that attempts to determine if an image is a twitter screenshot.
 
-this might be useful if you are looking for a way to hide twitter screenshots on external sites, such as image boards, forums, chatrooms, etc. 
+as twitter becomes worse and worse, you might be looking for a way to hide twitter screenshots on external sites, such as image boards, forums, chatrooms, etc. 
 
 using this library, you can request for an image to be evaluated, and if the function returns true, you can hide that image and not have to look at it any more.
 
