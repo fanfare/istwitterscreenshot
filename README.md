@@ -73,4 +73,3 @@ and later if you need to cancel that request before it has returned a response:
 this cancellation feature is useful for browser extensions as you may need to prevent (no longer needed) full size images from being downloaded and evaluated after a user has navigated away from a page (closed a tab).
 
 the cancelled asynchronous request made via `istwitterscreenshot.request` will return `false` as soon as possible.
-
