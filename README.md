@@ -1,6 +1,6 @@
 # istwitterscreenshot
 
-![twitter screencap vs regular image](https://i.jollo.org/Zpl-ci6N.png)
+![twitter screencap vs regular image](https://i.jollo.org/SRtyTVEn.png) 
 
 istwitterscreenshot is a library that attempts to determine if an image is a twitter screenshot.
 
