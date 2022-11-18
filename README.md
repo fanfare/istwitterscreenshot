@@ -12,7 +12,7 @@ create an instance of istwitterscreenshot (one time):
 
     const istwitterscreenshot = new Istwitterscreenshot
     
-then make as many requests as needed (ideally, you have an image in its native resolution *and* a thumbnail version of the image):
+then make as many requests as needed (ideally, you have an image in its native resolution *and* a thumbnail version of the image, which is typically the case with image boards):
 
     const thumbnailURL = "http://localhost/thumbnail.jpg"
     const fullsizeURL = "http://localhost/fullsize.jpg"
