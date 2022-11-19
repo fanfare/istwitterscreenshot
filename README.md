@@ -27,6 +27,14 @@ then make as many requests as needed (ideally, you have an image in its native r
     }
     image.src = thumbnailURL
     
+## how it works
+
+the library will first evaluate the thumbnail provided and make a guess as to whether or not it is a twitter screenshot based *soley* on the thumbnail.
+
+if the thumbnail is very likely a twitter screenshot, it will return true, but if the thumbnail is very unlikely a twitter screenshot, it will return false.
+
+if it is uncertain as to whether or not the thumbnail is twitter screenshot, it will *only then* download the full size image to perform additional tests to make a final assessment.
+    
 ## notes
 
-see [NOTES.md](https://github.com/fanfare/istwitterscreenshot/blob/master/NOTES.md) for additional info.
+see [NOTES.md](https://github.com/fanfare/istwitterscreenshot/blob/master/NOTES.md) for additional usage info.
