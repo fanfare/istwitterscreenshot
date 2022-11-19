@@ -1,11 +1,3 @@
-## how it works
-
-the library will first evaluate the thumbnail provided and make a guess as to whether or not it is a twitter screenshot based *soley* on the thumbnail.
-
-if the thumbnail is very likely a twitter screenshot, it will return true, but if the thumbnail is very unlikely a twitter screenshot, it will return false.
-
-if it is uncertain as to whether or not the thumbnail is twitter screenshot, it will *only then* download the full size image to perform additional tests to make a final assessment.
-
 ## notes
 
 it is important to note that the image(s) must be from the same domain as the page you are on -- to circumvent this, the library can be run from within a browser extension's background script, which is not limited by CORS restrictions, assuming the `"permissions"` key in the `manifest.json` includes the appropriate domains and/or `"<all_urls>"`. you may also need to set the `image` variable to have a `crossOrigin` property of `"anonymous"`, e.g.:
