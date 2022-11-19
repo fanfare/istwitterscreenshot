@@ -29,4 +29,4 @@ then make as many requests as needed (ideally, you have an image in its native r
     
 ## notes
 
-see [NOTES.md](https://github.com/fanfare/istwitterscreenshot/blob/master/README.md) for additional info.
+see [NOTES.md](https://github.com/fanfare/istwitterscreenshot/blob/master/NOTES.md) for additional info.
