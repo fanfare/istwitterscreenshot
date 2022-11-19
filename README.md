@@ -6,6 +6,8 @@ as twitter becomes worse and worse, you might be looking for a way to hide twitt
 
 using this library, you can request for an image to be evaluated, and if the function returns true, you can hide that image and not have to look at it any more.
 
+it occasionally results in false positives and false negatives but generally speaking it works pretty well; it might be worth using if you are really fed up with twitter screenshots.
+
 ## usage
 
 create an instance of istwitterscreenshot (one time):
@@ -32,7 +34,7 @@ the library will first evaluate the thumbnail provided and make a guess as to wh
 if the thumbnail is very likely a twitter screenshot, it will return true, but if the thumbnail is very unlikely a twitter screenshot, it will return false.
 
 if it is uncertain as to whether or not the thumbnail is twitter screenshot, it will *only then* download the full size image to perform additional tests to make a final assessment.
-    
+
 ## notes
 
 it is important to note that the image(s) must be from the same domain as the page you are on -- to circumvent this, the library can be run from within a browser extension's background script, which is not limited by CORS restrictions, assuming the `"permissions"` key in the `manifest.json` includes the appropriate domains and/or `"<all_urls>"`. you may also need to set the `image` variable to have a `crossOrigin` property of `"anonymous"`, e.g.:
