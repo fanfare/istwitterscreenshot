@@ -30,6 +30,10 @@ the library will first evaluate the thumbnail provided and make a guess as to wh
 if the thumbnail is very likely a twitter screenshot, it will return true, but if the thumbnail is very unlikely a twitter screenshot, it will return false.
 
 if it is uncertain as to whether or not the thumbnail is twitter screenshot, it will *only then* download the full size image to perform additional tests to make a final assessment.
+
+## demonstration
+
+an image board [WebExtension](https://github.com/newscoffee/hide-twitter-screenshot-threads) was created to demonstrate the functionality of istwitterscreenshot.
     
 ## notes
 
